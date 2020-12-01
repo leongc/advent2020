@@ -246,3 +246,33 @@ function multiply2020(input) {
 console.assert(multiply2020([1721,979,366,299,675,1456]) === 514579);
 
 console.log(multiply2020(day01input));
+
+/*
+--- Part Two ---
+The Elves in accounting are thankful for your help; one of them even offers you a starfish coin they had left over from a past vacation. They offer you a second one if you can find three numbers in your expense report that meet the same criteria.
+
+Using the above example again, the three entries that sum to 2020 are 979, 366, and 675. Multiplying them together produces the answer, 241861950.
+
+In your expense report, what is the product of the three entries that sum to 2020?
+*/
+
+function tri2020(input) {
+  var m = new Map();
+  for (var i = 0; i < input.length; i++) {
+    var first = input[i];
+    var second, third;
+    if (m.has(first)) {
+      [second, third] = m.get(first);
+      return first * second * third;
+    }
+    for (var j = i + 1; j < input.length; j++) {
+      second = input[j];
+      third = 2020 - (first + second);
+      m.set(third, [first, second]);
+    }
+  }
+  return m;
+}
+
+console.assert(tri2020([1721,979,366,299,675,1456]) === 241861950);
+console.log(tri2020(day01input));
