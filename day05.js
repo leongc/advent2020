@@ -937,7 +937,7 @@ day05input = [
 'FBBBBBBLRR',
 ];
 var maxSeatId = day05input.map(getSeatId).reduce((a,c,i,ar) => Math.max(a,c), 0);
-console.log();
+console.log(maxSeatId);
 
 /*
 --- Part Two ---
