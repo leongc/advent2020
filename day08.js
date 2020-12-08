@@ -699,3 +699,75 @@ var day08input = [
 'jmp +1',
 ];
 console.log(findLoopAccumulator(makeProgram(parseInput(day08input))));
+
+/*
+--- Part Two ---
+After some careful analysis, you believe that exactly one instruction is corrupted.
+
+Somewhere in the program, either a jmp is supposed to be a nop, or a nop is supposed to be a jmp. (No acc instructions were harmed in the corruption of this boot code.)
+
+The program is supposed to terminate by attempting to execute an instruction immediately after the last instruction in the file. By changing exactly one jmp or nop, you can repair the boot code and make it terminate correctly.
+
+For example, consider the same program from above:
+
+nop +0
+acc +1
+jmp +4
+acc +3
+jmp -3
+acc -99
+acc +1
+jmp -4
+acc +6
+If you change the first instruction from nop +0 to jmp +0, it would create a single-instruction infinite loop, never leaving that instruction. If you change almost any of the jmp instructions, the program will still eventually find another jmp instruction and loop forever.
+
+However, if you change the second-to-last instruction (from jmp -4 to nop -4), the program terminates! The instructions are visited in this order:
+
+nop +0  | 1
+acc +1  | 2
+jmp +4  | 3
+acc +3  |
+jmp -3  |
+acc -99 |
+acc +1  | 4
+nop -4  | 5
+acc +6  | 6
+After the last instruction (acc +6), the program terminates by attempting to run the instruction below the last instruction in the file. With this change, after the program terminates, the accumulator contains the value 8 (acc +1, acc +1, acc +6).
+
+Fix the program so that it terminates normally by changing exactly one jmp (to nop) or nop (to jmp). What is the value of the accumulator after the program terminates?
+*/
+
+function mutateListing(listing, index) {
+  var newOp = (listing[index][0] === 'nop') ? 'jmp' : (listing[index][0] === 'jmp') ? 'nop' : null;
+  if (newOp === null) {
+    return null; // invalid mutation
+  }
+  var result = Array.from(listing);
+  result[index] = [newOp, listing[index][1]]; // create new entry instead of mutating existing shared shallow clone
+  return result;
+}
+function isNormalExit(program) {
+  var executed = new Set();
+  while (!executed.has(program.pc) && program.pc >= 0 && program.pc < program.listingLength) {
+    executed.add(program.pc);
+    program.step();
+  }
+  return program.pc === program.listingLength;
+}
+function findMutantAccumulator(originalListing) {
+  for (var i = 0; i < originalListing.length; i++) {
+    var ml = mutateListing(originalListing, i);
+    if (ml === null) {
+      // skip invalid mutations
+      continue;  
+    }
+    var mp = makeProgram(ml);
+    if (isNormalExit(mp)) {
+      return mp.accumulator;
+    }
+  }
+  return undefined;
+}
+console.assert(findMutantAccumulator(parseInput(day08test)) === 8);
+
+console.log(findMutantAccumulator(parseInput(day08input)));
