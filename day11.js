@@ -247,3 +247,201 @@ var day11input = [
 'LLLLLLLLLLLLLLLLL.LLLL.LLLLL.LLL.L.LLLLLL.LLLLLLLL...LLLLLLLLLLLLLLL.LLLLL.LLL..LLLL.LLLLLL',
 ];
 console.log(runRoom(makeRoom(day11input)).getOccupiedCount());
+
+/*
+--- Part Two ---
+As soon as people start to arrive, you realize your mistake. People don't just care about adjacent seats - they care about the first seat they can see in each of those eight directions!
+
+Now, instead of considering just the eight immediately adjacent seats, consider the first seat in each of those eight directions. For example, the empty seat below would see eight occupied seats:
+
+.......#.
+...#.....
+.#.......
+.........
+..#L....#
+....#....
+.........
+#........
+...#.....
+The leftmost empty seat below would only see one empty seat, but cannot see any of the occupied ones:
+
+.............
+.L.L.#.#.#.#.
+.............
+The empty seat below would see no occupied seats:
+
+.##.##.
+#.#.#.#
+##...##
+...L...
+##...##
+#.#.#.#
+.##.##.
+Also, people seem to be more tolerant than you expected: it now takes five or more visible occupied seats for an occupied seat to become empty (rather than four or more from the previous rules). The other rules still apply: empty seats that see no occupied seats become occupied, seats matching no rule don't change, and floor never changes.
+
+Given the same starting layout as above, these new rules cause the seating area to shift around as follows:
+
+L.LL.LL.LL
+LLLLLLL.LL
+L.L.L..L..
+LLLL.LL.LL
+L.LL.LL.LL
+L.LLLLL.LL
+..L.L.....
+LLLLLLLLLL
+L.LLLLLL.L
+L.LLLLL.LL
+#.##.##.##
+#######.##
+#.#.#..#..
+####.##.##
+#.##.##.##
+#.#####.##
+..#.#.....
+##########
+#.######.#
+#.#####.##
+#.LL.LL.L#
+#LLLLLL.LL
+L.L.L..L..
+LLLL.LL.LL
+L.LL.LL.LL
+L.LLLLL.LL
+..L.L.....
+LLLLLLLLL#
+#.LLLLLL.L
+#.LLLLL.L#
+#.L#.##.L#
+#L#####.LL
+L.#.#..#..
+##L#.##.##
+#.##.#L.##
+#.#####.#L
+..#.#.....
+LLL####LL#
+#.L#####.L
+#.L####.L#
+#.L#.L#.L#
+#LLLLLL.LL
+L.L.L..#..
+##LL.LL.L#
+L.LL.LL.L#
+#.LLLLL.LL
+..L.L.....
+LLLLLLLLL#
+#.LLLLL#.L
+#.L#LL#.L#
+#.L#.L#.L#
+#LLLLLL.LL
+L.L.L..#..
+##L#.#L.L#
+L.L#.#L.L#
+#.L####.LL
+..#.#.....
+LLL###LLL#
+#.LLLLL#.L
+#.L#LL#.L#
+#.L#.L#.L#
+#LLLLLL.LL
+L.L.L..#..
+##L#.#L.L#
+L.L#.LL.L#
+#.LLLL#.LL
+..#.L.....
+LLL###LLL#
+#.LLLLL#.L
+#.L#LL#.L#
+Again, at this point, people stop shifting around and the seating area reaches equilibrium. Once this occurs, you count 26 occupied seats.
+
+Given the new visibility method and the rule change for occupied seats becoming empty, once equilibrium is reached, how many seats end up occupied?
+*/
+function makeRoom2(input) {
+  return {
+    room: input,
+    modified: true,
+    getOccupiedCount: function() {
+      return Array.from(this.room.join('').matchAll(/#/g)).length;
+    },
+    print: function() {
+      console.log('\n' + this.room.join('\n'));
+    },
+    isOccupied: function(x, y, i, j) {
+      if (i === 0 && j === 0) { return false; }
+      var a = x + i;
+      var b = y + j;
+      while (true) {
+        // out of bounds or saw empty chair
+        if (a < 0 || this.room.length <= a ||
+            b < 0 || this.room[0].length <= b ||
+            this.room[a][b] === 'L') {
+          return false;
+        }
+        if (this.room[a][b] === '#') {
+          return true;
+        }
+        // assume floor; keep looking
+        a += i;
+        b += j;
+      }
+    },
+    getOccupiedVisible: function(x, y) {
+      var sum = 0;
+      for (var i=-1; i<=1; i++) {
+        for (var j=-1; j<=1; j++) {
+          if (this.isOccupied(x, y, i, j)) { sum++; }
+        }
+      }
+      return sum;
+    }, 
+    next: function() {
+      this.modified = false;
+      var nextRoom = [];
+      for (var i = 0; i < this.room.length; i++) {
+        var nextRow = "";
+        for (var j = 0; j < this.room[0].length; j++) {
+          if (this.room[i][j] === '.') {
+            nextRow += '.';
+          } else {
+            var occupiedVisible = this.getOccupiedVisible(i, j);
+            if (this.room[i][j] === 'L' && occupiedVisible === 0) {
+              this.modified = true;
+              nextRow += '#';
+            } else if (this.room[i][j] === '#' && occupiedVisible >= 5) {
+              this.modified = true;
+              nextRow += 'L';
+            } else {
+              nextRow += this.room[i][j];
+            }
+          }
+        } // next j
+        nextRoom.push(nextRow);
+      } // next i
+      this.room = nextRoom;
+    },
+  };
+}
+var day11test8 = [
+'.......#.',
+'...#.....',
+'.#.......',
+'.........',
+'..#L....#',
+'....#....',
+'.........',
+'#........',
+'...#.....',
+];
+console.assert(makeRoom2(day11test8).getOccupiedVisible(4, 3) === 8);
+      
+var day11test0 = [
+'.............',
+'.L.L.#.#.#.#.',
+'.............',
+];
+var r0 = makeRoom2(day11test0);
+console.assert(r0.getOccupiedVisible(1, 1) === 0);
+console.assert(r0.getOccupiedVisible(1, 3) === 1);
+console.assert(r0.getOccupiedVisible(1, 5) === 1);
+console.assert(r0.getOccupiedVisible(1, 7) === 2);
+
+console.log(runRoom(makeRoom2(day11input)).getOccupiedCount());
