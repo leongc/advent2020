@@ -128,29 +128,38 @@ However, with so many bus IDs in your list, surely the actual earliest timestamp
 
 What is the earliest timestamp such that all of the listed bus IDs depart at offsets matching their positions in the list?
 */
-function busSeq(input, start=1) {
+function findNext(checks, start, stride) {
+  var t = start;
+  var progress = 0;
+  while (!checks.every( ([bus, adjOffset]) => { return ((t + adjOffset) % bus) === 0; } )) {
+    // checks.forEach( ([k,v]) => { console.log(t, t+v+'%'+k, (t+v)%k); });
+    t += stride;
+    if (progress++ > 1000000) {
+      console.log(t);
+      progress = 0;
+    }
+  }
+  return t;
+}
+function busSeq(input, start=0, stride=1) {
   var busOffsetMap = new Map();
   input[1].split(',').forEach( (s, i) => {
     if (s !== 'x') {
       busOffsetMap.set(parseInt(s, 10), i);
     }
   });
-  var maxBus = Math.max(...busOffsetMap.keys());
-  var maxOffset = busOffsetMap.get(maxBus);
-  var checks = [...busOffsetMap.entries()].filter( ([k, v]) => k !== maxBus ).map( ([k, v]) => [k, v-maxOffset] );
-  // console.log(checks.join(';'));
-  var startFactor = Math.ceil( start / maxBus );
-  var t = startFactor * maxBus;
-  var progress = 0;
-  while (!checks.every( ([bus, adjOffset]) => { return ((t + adjOffset) % bus) === 0; } )) {
-    // checks.forEach( ([k,v]) => { console.log(t, t+v+'%'+k, (t+v)%k); });
-    t += maxBus;
-    if (progress++ > 1000000) {
-      console.log(t);
-      progress = 0;
-    }      
+  var allChecks = [...busOffsetMap.entries()];
+  var t = start;
+  var checks = [];
+  for (const check of allChecks) {
+    checks.push(check);
+    t = findNext(checks, t, stride);
+    if (checks.length < allChecks.length) {
+      stride = findNext(checks, t+stride, stride) - t;
+    }
+    console.log(t, 'stride=' + stride);
   }
-  return t - maxOffset;
+  return t;
 }
 console.assert(busSeq(day13test)===1068781);
 console.assert(busSeq([0,'17,x,13,19'])===3417);
