@@ -83,3 +83,38 @@ console.assert(ff(memoryGame(3,1,2)) === 1836);
 
 var day15input = [8,13,1,0,18,9];
 console.log(ff(memoryGame(...day15input)));
+
+/*
+--- Part Two ---
+Impressed, the Elves issue you a challenge: determine the 30000000th number spoken. For example, given the same starting numbers as above:
+
+Given 0,3,6, the 30000000th number spoken is 175594.
+Given 1,3,2, the 30000000th number spoken is 2578.
+Given 2,1,3, the 30000000th number spoken is 3544142.
+Given 1,2,3, the 30000000th number spoken is 261214.
+Given 2,3,1, the 30000000th number spoken is 6895259.
+Given 3,2,1, the 30000000th number spoken is 18.
+Given 3,1,2, the 30000000th number spoken is 362.
+Given your starting numbers, what will be the 30000000th number spoken?
+*/
+function fff(iter, count=30000000) {
+  const max_chunk = 10000000;
+  var i = 0;
+  var result;
+  while (i < count) {
+    var chunk = Math.min(max_chunk, count - i);
+    i += chunk;
+    result = ff(iter, chunk);
+    console.log(i, result);
+  }
+  return result;
+}
+console.assert(fff(memoryGame(0,3,6)) === 175594);
+console.assert(fff(memoryGame(1,3,2)) === 2578);
+console.assert(fff(memoryGame(2,1,3)) === 3544142);
+console.assert(fff(memoryGame(1,2,3)) === 261214);
+console.assert(fff(memoryGame(2,3,1)) === 6895259);
+console.assert(fff(memoryGame(3,2,1)) === 18);
+console.assert(fff(memoryGame(3,1,2)) === 362);
+
+console.log(fff(memoryGame(...day15input)));
