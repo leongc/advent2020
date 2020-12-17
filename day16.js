@@ -464,14 +464,8 @@ var fields = deduceFields(testFieldRulers, testValidTickets);
 console.assert(fields.every(a => a.length === 1));
 
 function departureFieldsProduct(deducedFields, ticket) {
-  var isDeparture = deducedFields.map( a => a[0].startsWith('departure') );
-  var product = 1;
-  for (var i = 0; i < isDeparture.length; i++) {
-    if (isDeparture[i]) {
-      product *= ticket[i];
-    }
-  }
-  return product;
+  return deducedFields.reduce((product, field, index) => 
+                              (field[0].startsWith('departure') ? product * ticket[index] : product), 1);
 }
 var fieldRulers = makeFieldRulers(day16notes);
 var validTickets = filterValidTickets(makeRuler(day16notes), parseTickets(day16tickets));
