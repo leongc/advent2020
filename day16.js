@@ -358,3 +358,123 @@ var day16tickets = [
 ];
 var day16ruler = makeRuler(day16notes);
 console.log(sumInvalid(day16ruler, day16tickets));
+/*
+--- Part Two ---
+Now that you've identified which tickets contain invalid values, discard those tickets entirely. Use the remaining valid tickets to determine which field is which.
+
+Using the valid ranges for each field, determine what order the fields appear on the tickets. The order is consistent between all tickets: if seat is the third field, it is the third field on every ticket, including your ticket.
+
+For example, suppose you have the following notes:
+
+class: 0-1 or 4-19
+row: 0-5 or 8-19
+seat: 0-13 or 16-19
+
+your ticket:
+11,12,13
+
+nearby tickets:
+3,9,18
+15,1,5
+5,14,9
+Based on the nearby tickets in the above example, the first position must be row, the second position must be class, and the third position must be seat; you can conclude that in your ticket, class is 12, row is 11, and seat is 13.
+
+Once you work out which field is which, look for the six fields on your ticket that start with the word departure. What do you get if you multiply those six values together?
+*/
+function makeFieldRuler(field, validValues) {
+  return {
+    field,
+    isValid: function(n) {
+      return validValues.has(n);
+    }
+  };
+}
+function makeFieldRulers(inputNotes) {
+  var fieldRulers = new Set();
+  for (const line of inputNotes) {
+    var validValues = new Set();
+    var [field, ranges] = line.split(': ', 2);
+    var loHis = ranges.split(' or ');
+    for (const lohi of loHis) {
+      var [lo, hi] = lohi.split('-').map((x) => parseInt(x, 10));
+      for (var i = lo; i <= hi; i++) {
+        validValues.add(i);
+      }
+    }
+    fieldRulers.add(makeFieldRuler(field, validValues));
+  }
+  return fieldRulers;
+}
+function parseTickets(inputs) {
+  return inputs.map(line => line.split(',').map((x) => parseInt(x, 10)));
+}
+function filterValidTickets(ticketRuler, tickets) {
+  return tickets.filter(t => t.every(v => ticketRuler.isValid(v)));
+}
+function cloneSet(set) {
+  var result = new Set();
+  for (const s of set) {
+    result.add(s);
+  }
+  return result;
+}
+function deduceFields(fieldRulers, validTickets) {
+  var candidateRules = [];
+  for (var i = 0; i < validTickets[0].length; i++) {
+    candidateRules[i] = cloneSet(fieldRulers);
+  }
+  for (var ticket of validTickets) {
+    for (var i = 0; i < ticket.length; i++) {
+      var failedRules = [];
+      for (var rule of candidateRules[i]) {
+        if (!rule.isValid(ticket[i])) {
+//           console.log('value ' + ticket[i], 'prevents field ' + i + ' from being a valid ' + rule.field);
+          failedRules.push([rule, i]); // defer rule deletion until after loop over rules completes
+        }
+      }
+      while (failedRules.length > 0) {
+        var [failedRule, i] = failedRules.shift();
+        if (candidateRules[i].delete(failedRule) && candidateRules[i].size === 1) {
+          // cascade removal of soloRule from all other candidate sets
+          var soloRule = candidateRules[i].values().next().value;
+          for (var j = 0; j < candidateRules.length; j++) {
+            if (i === j) continue; // skip the winning set
+//             console.log(soloRule.field + ' is field ' + i + ' and therefore not field ' + j);
+            failedRules.push([soloRule, j]);
+          }
+        }
+      } // wend
+    } // i
+  } // ticket
+  return candidateRules.map(s => [...s.values()].map(r => r.field));
+}
+var day16test2notes = [
+'class: 0-1 or 4-19',
+'row: 0-5 or 8-19',
+'seat: 0-13 or 16-19',
+];
+var day16test2tickets = [
+'3,9,18',
+'15,1,5',
+'5,14,9',
+];
+var testFieldRulers = makeFieldRulers(day16test2notes);
+var testValidTickets = filterValidTickets(makeRuler(day16test2notes), parseTickets(day16test2tickets));
+var fields = deduceFields(testFieldRulers, testValidTickets);
+console.assert(fields.every(a => a.length === 1));
+
+function departureFieldsProduct(deducedFields, ticket) {
+  var isDeparture = deducedFields.map( a => a[0].startsWith('departure') );
+  var product = 1;
+  for (var i = 0; i < isDeparture.length; i++) {
+    if (isDeparture[i]) {
+      product *= ticket[i];
+    }
+  }
+  return product;
+}
+var fieldRulers = makeFieldRulers(day16notes);
+var validTickets = filterValidTickets(makeRuler(day16notes), parseTickets(day16tickets));
+var departureFields = deduceFields(fieldRulers, validTickets);
+console.assert(departureFields.every(a => a.length === 1));
+console.log(departureFieldsProduct(departureFields, day16ticket));
