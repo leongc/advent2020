@@ -458,3 +458,73 @@ var day18input = [
 '5 + (6 * 3)',
 ];
 console.log(day18input.reduce((acc, cur) => (acc + evaluate(parse(cur))), 0));
+
+/*
+--- Part Two ---
+You manage to answer the child's questions and they finish part 1 of their homework, but get stuck when they reach the next section: advanced math.
+
+Now, addition and multiplication have different precedence levels, but they're not the ones you're familiar with. Instead, addition is evaluated before multiplication.
+
+For example, the steps to evaluate the expression 1 + 2 * 3 + 4 * 5 + 6 are now as follows:
+
+1 + 2 * 3 + 4 * 5 + 6
+  3   * 3 + 4 * 5 + 6
+  3   *   7   * 5 + 6
+  3   *   7   *  11
+     21       *  11
+         231
+Here are the other examples from above:
+
+1 + (2 * 3) + (4 * (5 + 6)) still becomes 51.
+2 * 3 + (4 * 5) becomes 46.
+5 + (8 * 3 + 9 + 3 * 4 * 3) becomes 1445.
+5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4)) becomes 669060.
+((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2 becomes 23340.
+What do you get if you add up the results of evaluating the homework problems using these new rules?
+*/
+function advancedHandleNumber(n, stack) {
+  if (stack.length === 0 || stack[stack.length-1] === '(' || stack[stack.length-1] === '*') {
+    stack.push(n);
+  } else {
+    var op = stack.pop(); // expect +
+    var val = stack.pop();
+    if (op !== '+') { console.log('Unexpected op:', val, op); }
+    stack.push(val + n);
+  }
+}
+function advancedEvaluate(iter) {
+  var stack = [];
+  for (var tok of iter) {
+    if (typeof tok === 'number') {
+      advancedHandleNumber(tok, stack);
+    } else if (tok === ')') {
+      var prevTok = null;
+      var acc = 1;
+      while (prevTok !== '(') {
+        acc *= stack.pop();
+        prevTok = stack.pop();
+        if (prevTok !== '(' && prevTok !== '*') { console.log('Unexpected op:', prevTok, acc); }
+      }
+      advancedHandleNumber(acc, stack);
+    } else { // (*+
+      stack.push(tok);
+    }
+  }
+  var acc = 1;
+  while (stack.length > 0) {
+    acc *= stack.pop();
+    if (stack.length === 0) {
+      return acc;
+    }
+    var op = stack.pop(); // discard *
+    if (op !== '*') { console.log('Unexpected op:', op, acc); }
+  }
+}
+console.assert(advancedEvaluate(parse('1 + 2 * 3 + 4 * 5 + 6')) === 231);
+console.assert(advancedEvaluate(parse('1 + (2 * 3) + (4 * (5 + 6))')) === 51);
+console.assert(advancedEvaluate(parse('2 * 3 + (4 * 5) ')) ===  46);
+console.assert(advancedEvaluate(parse('5 + (8 * 3 + 9 + 3 * 4 * 3) ')) ===  1445);
+console.assert(advancedEvaluate(parse('5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4)) ')) ===  669060);
+console.assert(advancedEvaluate(parse('((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2 ')) ===  23340);
+
+console.log(day18input.reduce((acc, cur) => (acc + advancedEvaluate(parse(cur))), 0));
