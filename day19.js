@@ -756,3 +756,231 @@ var day19input = [
 ];
 var validator = makeValidator(parseRules(day19input));
 console.log([...day19input.filter( s => s.length > 0 && validator.isValid(0, s) === s.length )].length);
+
+/*
+--- Part Two ---
+As you look over the list of messages, you realize your matching rules aren't quite right. To fix them, completely replace rules 8: 42 and 11: 42 31 with the following:
+
+8: 42 | 42 8
+11: 42 31 | 42 11 31
+This small change has a big impact: now, the rules do contain loops, and the list of messages they could hypothetically match is infinite. You'll need to determine how these changes affect which messages are valid.
+
+Fortunately, many of the rules are unaffected by this change; it might help to start by looking at which rules always match the same set of values and how those rules (especially rules 42 and 31) are used by the new versions of rules 8 and 11.
+
+(Remember, you only need to handle the rules you have; building a solution that could handle any hypothetical combination of rules would be significantly more difficult.)
+
+For example:
+
+42: 9 14 | 10 1
+9: 14 27 | 1 26
+10: 23 14 | 28 1
+1: "a"
+11: 42 31
+5: 1 14 | 15 1
+19: 14 1 | 14 14
+12: 24 14 | 19 1
+16: 15 1 | 14 14
+31: 14 17 | 1 13
+6: 14 14 | 1 14
+2: 1 24 | 14 4
+0: 8 11
+13: 14 3 | 1 12
+15: 1 | 14
+17: 14 2 | 1 7
+23: 25 1 | 22 14
+28: 16 1
+4: 1 1
+20: 14 14 | 1 15
+3: 5 14 | 16 1
+27: 1 6 | 14 18
+14: "b"
+21: 14 1 | 1 14
+25: 1 1 | 1 14
+22: 14 14
+8: 42
+26: 14 22 | 1 20
+18: 15 15
+7: 14 5 | 1 21
+24: 14 1
+
+abbbbbabbbaaaababbaabbbbabababbbabbbbbbabaaaa
+bbabbbbaabaabba
+babbbbaabbbbbabbbbbbaabaaabaaa
+aaabbbbbbaaaabaababaabababbabaaabbababababaaa
+bbbbbbbaaaabbbbaaabbabaaa
+bbbababbbbaaaaaaaabbababaaababaabab
+ababaaaaaabaaab
+ababaaaaabbbaba
+baabbaaaabbaaaababbaababb
+abbbbabbbbaaaababbbbbbaaaababb
+aaaaabbaabaaaaababaa
+aaaabbaaaabbaaa
+aaaabbaabbaaaaaaabbbabbbaaabbaabaaa
+babaaabbbaaabaababbaabababaaab
+aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba
+Without updating rules 8 and 11, these rules only match three messages: bbabbbbaabaabba, ababaaaaaabaaab, and ababaaaaabbbaba.
+
+However, after updating rules 8 and 11, a total of 12 messages match:
+
+bbabbbbaabaabba
+babbbbaabbbbbabbbbbbaabaaabaaa
+aaabbbbbbaaaabaababaabababbabaaabbababababaaa
+bbbbbbbaaaabbbbaaabbabaaa
+bbbababbbbaaaaaaaabbababaaababaabab
+ababaaaaaabaaab
+ababaaaaabbbaba
+baabbaaaabbaaaababbaababb
+abbbbabbbbaaaababbbbbbaaaababb
+aaaaabbaabaaaaababaa
+aaaabbaabbaaaaaaabbbabbbaaabbaabaaa
+aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba
+After updating rules 8 and 11, how many messages completely match rule 0?
+*/
+
+var day19test2 = [
+'42: 9 14 | 10 1',
+'9: 14 27 | 1 26',
+'10: 23 14 | 28 1',
+'1: "a"',
+'11: 42 31',
+'5: 1 14 | 15 1',
+'19: 14 1 | 14 14',
+'12: 24 14 | 19 1',
+'16: 15 1 | 14 14',
+'31: 14 17 | 1 13',
+'6: 14 14 | 1 14',
+'2: 1 24 | 14 4',
+'0: 8 11',
+'13: 14 3 | 1 12',
+'15: 1 | 14',
+'17: 14 2 | 1 7',
+'23: 25 1 | 22 14',
+'28: 16 1',
+'4: 1 1',
+'20: 14 14 | 1 15',
+'3: 5 14 | 16 1',
+'27: 1 6 | 14 18',
+'14: "b"',
+'21: 14 1 | 1 14',
+'25: 1 1 | 1 14',
+'22: 14 14',
+'8: 42',
+'26: 14 22 | 1 20',
+'18: 15 15',
+'7: 14 5 | 1 21',
+'24: 14 1',
+'',
+'abbbbbabbbaaaababbaabbbbabababbbabbbbbbabaaaa',
+'bbabbbbaabaabba',
+'babbbbaabbbbbabbbbbbaabaaabaaa',
+'aaabbbbbbaaaabaababaabababbabaaabbababababaaa',
+'bbbbbbbaaaabbbbaaabbabaaa',
+'bbbababbbbaaaaaaaabbababaaababaabab',
+'ababaaaaaabaaab',
+'ababaaaaabbbaba',
+'baabbaaaabbaaaababbaababb',
+'abbbbabbbbaaaababbbbbbaaaababb',
+'aaaaabbaabaaaaababaa',
+'aaaabbaaaabbaaa',
+'aaaabbaabbaaaaaaabbbabbbaaabbaabaaa',
+'babaaabbbaaabaababbaabababaaab',
+'aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba',
+];
+var testRules2 = parseRules(day19test2);
+var testValidator2 = makeValidator(testRules2);
+console.assert([...day19test2.filter( s => s.length > 0 && testValidator2.isValid(0, s) === s.length )].length === 3);
+
+function expandRule(rule, rules, prefixSet) {
+  if (prefixSet === undefined) {
+    prefixSet = new Set();
+    prefixSet.add('');
+  }
+  var result = new Set();
+  if (typeof rule === "string") {
+    for (var p of prefixSet) {
+      result.add(p + rule);
+    }
+  } else if (typeof rule === "number") {
+    var ruleObj = rules.get(rule);
+    if (ruleObj === undefined) { return result; }
+    return expandRule(ruleObj, rules, prefixSet);
+  } else if (Array.prototype.isPrototypeOf(rule)) {
+    if (rule.length === 0) {
+      return prefixSet;
+    }
+    var expandHead = expandRule(rule[0], rules, prefixSet);
+    return expandRule(rule.slice(1), rules, expandHead);
+  } else if (Set.prototype.isPrototypeOf(rule)) {
+    for (var choiceRule of rule) {
+      for (var e of expandRule(choiceRule, rules, prefixSet)) {
+        result.add(e);
+      }
+    }
+  }
+  return result;
+}
+
+// Add loop rules, and expand terminators for faster searching
+// 8: 42 | 42 8
+// 11: 42 31 | 42 11 31
+function addLoopRules(rules) {
+//   rules.set(8, parseRule('42 | 42 8'));
+//   rules.set(11, parseRule('42 31 | 42 11 31'));
+// expand a finite number of times. 
+// 42 and 31 are 8 chars long & longest input is 89 chars => max 10 42s or 5 pairs of 42/31
+  rules.set(8, parseRule('42 | 42 42 | 42 42 42 | 42 42 42 42 | 42 42 42 42 42 | 42 42 42 42 42 42 | 42 42 42 42 42 42 42 | 42 42 42 42 42 42 42 42 | 42 42 42 42 42 42 42 42 42'));
+  rules.set(11, parseRule('42 31 | 42 42 31 31 | 42 42 42 31 31 31 | 42 42 42 42 31 31 31 31 | 42 42 42 42 42 31 31 31 31 31'));
+  rules.set(42, expandRule(42, rules));
+  rules.set(31, expandRule(31, rules));
+  return rules;
+}
+
+function makeLoopValidator(rules) {
+  return {
+    /* returns Set of lengths of str that can match rule */
+    validLengths: function(rule, str, prefixSet) {
+      if (prefixSet === undefined) {
+        prefixSet = new Set();
+        prefixSet.add(0);
+      }
+      var result = new Set();
+      if (typeof rule === "string") {
+        for (var p of prefixSet) {
+          if (str.substring(p, p + rule.length) === rule) {
+            result.add(p + rule.length);
+          }
+        }
+      }
+      if (typeof rule === "number") {
+        var ruleObj = rules.get(rule);
+        if (ruleObj === undefined) { return result; }
+        return this.validLengths(ruleObj, str, prefixSet);
+      }
+      if (Array.prototype.isPrototypeOf(rule)) {
+        if (rule.length === 0) {
+          return prefixSet;
+        }
+        var validHeads = this.validLengths(rule[0], str, prefixSet);
+        for (var valid of this.validLengths(rule.slice(1), str, validHeads)) {
+          result.add(valid);
+        }
+      }
+      if (Set.prototype.isPrototypeOf(rule)) {
+        for (var choiceRule of rule) {
+          for (var valid of this.validLengths(choiceRule, str, prefixSet)) {
+            result.add(valid);
+          }
+        }
+      }
+      return result;
+    } // isValid
+  } // obj
+} // makeLoopValidator
+
+var testLoopRules = addLoopRules(parseRules(day19test2));
+var testLoopValidator = makeLoopValidator(testLoopRules);
+console.assert([...day19test2.filter( s => s.length > 0 && testLoopValidator.validLengths(0, s).has(s.length) )].length === 12);
+
+var loopRules = addLoopRules(parseRules(day19input));
+var loopValidator = makeLoopValidator(loopRules);
+console.log([...day19input.filter( s => s.length > 0 && loopValidator.validLengths(0, s).has(s.length) )].length);
