@@ -174,26 +174,22 @@ function reverse(edge) {
 }
 console.assert(reverse('edge') === 'egde');
 
-function getEdges(tile) {
+function getEdges(tileContent) {
   var edges = [];
-  var n = tile[0];
+  var n = tileContent[0];
   edges.push(n);
-  edges.push(reverse(n));
-  var e = tile.map(l => l[l.length-1]).join('');
+  var e = tileContent.map(l => l[l.length-1]).join('');
   edges.push(e);
-  edges.push(reverse(e));
-  var s = tile[tile.length-1];
+  var s = tileContent[tileContent.length-1];
   edges.push(s);
-  edges.push(reverse(s));
-  var w = tile.map(l => l[0]).join('');
+  var w = tileContent.map(l => l[0]).join('');
   edges.push(w);
-  edges.push(reverse(w));
   return edges;
 }
-console.assert(getEdges(['ab','12']).join() === 'ab,ba,b2,2b,12,21,a1,1a');
+console.assert(getEdges(['ab','12']).join() === 'ab,b2,12,a1');
 
 function parseTiles(input) {
-  var tileEdgesMap = new Map(); // id -> [ edge strings N, -N, E, -E, S, -S, W, -W ]
+  var tileContentMap = new Map(); // id -> tile grid
   var id;
   var tile;
   for (const line of input) {
@@ -203,13 +199,23 @@ function parseTiles(input) {
     } else if (line !== '') {
       tile.push(line);
     } else {
-      tileEdgesMap.set(id, getEdges(tile));
+      tileContentMap.set(id, tile);
     }
   }
-  tileEdgesMap.set(id, getEdges(tile));
+  tileContentMap.set(id, tile); // flush tile buffer if no trailing newline
+  return tileContentMap;
+}
+
+function makeTileEdgesMap(tileContentMap) {
+  var tileEdgesMap = new Map(); // id -> [ edge strings N, -N, E, -E, S, -S, W, -W ]
+  for (var [tileId, content] of tileContentMap.entries()) {
+    var edges = getEdges(content);
+    tileEdgesMap.set(tileId, edges.concat(edges.map(reverse)));
+  }
   return tileEdgesMap;
 }
-var testTileEdges = parseTiles(day20test);
+
+var testTileEdges = makeTileEdgesMap(parseTiles(day20test));
 console.assert(testTileEdges.size === 9);
 
 function countEdges(tileEdgesMap) {
@@ -236,7 +242,7 @@ function isCorner(tileId, tileEdgesMap, edgeTilesMap) {
   var matchedEdges = edges.map(e => edgeTilesMap.get(e).size > 1);
   var matchedSides = 0;
   for (var side = 0; side < 4; side++) {
-    if (matchedEdges[2*side] || matchedEdges[(2*side)+1]) {
+    if (matchedEdges[side] || matchedEdges[side+4]) {
       matchedSides++;
     }
     if (matchedSides > 2) {
@@ -249,7 +255,7 @@ console.assert(isCorner(1951, testTileEdges, testEdgeTiles));
 console.assert(!isCorner(2311, testTileEdges, testEdgeTiles));
 
 function cornerProduct(input) {
-  var tileEdgesMap = parseTiles(input);
+  var tileEdgesMap = makeTileEdgesMap(parseTiles(input));
   var edgeTilesMap = countEdges(tileEdgesMap);
   return [...tileEdgesMap.keys()]
     .filter(k=>isCorner(k, tileEdgesMap, edgeTilesMap))
@@ -257,7 +263,7 @@ function cornerProduct(input) {
 }
 console.assert(cornerProduct(day20test) === 20899048083289);
 
-console.log(cornerProduct([
+var day20input = [
 'Tile 1249:',
 '...#......',
 '#..#..#.##',
@@ -1986,4 +1992,265 @@ console.log(cornerProduct([
 '.#...##.##',
 '#..###....',
 '',
-]));
+];
+console.log(cornerProduct(day20input));
+
+/*
+--- Part Two ---
+Now, you're ready to check the image for sea monsters.
+
+The borders of each tile are not part of the actual image; start by removing them.
+
+In the example above, the tiles become:
+
+.#.#..#. ##...#.# #..#####
+###....# .#....#. .#......
+##.##.## #.#.#..# #####...
+###.#### #...#.## ###.#..#
+##.#.... #.##.### #...#.##
+...##### ###.#... .#####.#
+....#..# ...##..# .#.###..
+.####... #..#.... .#......
+
+#..#.##. .#..###. #.##....
+#.####.. #.####.# .#.###..
+###.#.#. ..#.#### ##.#..##
+#.####.. ..##..## ######.#
+##..##.# ...#...# .#.#.#..
+...#..#. .#.#.##. .###.###
+.#.#.... #.##.#.. .###.##.
+###.#... #..#.##. ######..
+
+.#.#.### .##.##.# ..#.##..
+.####.## #.#...## #.#..#.#
+..#.#..# ..#.#.#. ####.###
+#..####. ..#.#.#. ###.###.
+#####..# ####...# ##....##
+#.##..#. .#...#.. ####...#
+.#.###.. ##..##.. ####.##.
+...###.. .##...#. ..#..###
+Remove the gaps to form the actual image:
+
+.#.#..#.##...#.##..#####
+###....#.#....#..#......
+##.##.###.#.#..######...
+###.#####...#.#####.#..#
+##.#....#.##.####...#.##
+...########.#....#####.#
+....#..#...##..#.#.###..
+.####...#..#.....#......
+#..#.##..#..###.#.##....
+#.####..#.####.#.#.###..
+###.#.#...#.######.#..##
+#.####....##..########.#
+##..##.#...#...#.#.#.#..
+...#..#..#.#.##..###.###
+.#.#....#.##.#...###.##.
+###.#...#..#.##.######..
+.#.#.###.##.##.#..#.##..
+.####.###.#...###.#..#.#
+..#.#..#..#.#.#.####.###
+#..####...#.#.#.###.###.
+#####..#####...###....##
+#.##..#..#...#..####...#
+.#.###..##..##..####.##.
+...###...##...#...#..###
+Now, you're ready to search for sea monsters! Because your image is monochrome, a sea monster will look like this:
+
+                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   
+When looking for this pattern in the image, the spaces can be anything; only the # need to match. Also, you might need to rotate or flip your image before it's oriented correctly to find sea monsters. In the above image, after flipping and rotating it to the appropriate orientation, there are two sea monsters (marked with O):
+
+.####...#####..#...###..
+#####..#..#.#.####..#.#.
+.#.#...#.###...#.##.O#..
+#.O.##.OO#.#.OO.##.OOO##
+..#O.#O#.O##O..O.#O##.##
+...#.#..##.##...#..#..##
+#.##.#..#.#..#..##.#.#..
+.###.##.....#...###.#...
+#.####.#.#....##.#..#.#.
+##...#..#....#..#...####
+..#.##...###..#.#####..#
+....#.##.#.#####....#...
+..##.##.###.....#.##..#.
+#...#...###..####....##.
+.#.##...#.##.#.#.###...#
+#.###.#..####...##..#...
+#.###...#.##...#.##O###.
+.O##.#OO.###OO##..OOO##.
+..O#.O..O..O.#O##O##.###
+#.#..##.########..#..##.
+#.#####..#.#...##..#....
+#....##..#.#########..##
+#...#.....#..##...###.##
+#..###....##.#...##.##.#
+Determine how rough the waters are in the sea monsters' habitat by counting the number of # that are not part of a sea monster. In the above example, the habitat's water roughness is 273.
+
+How many # are not part of a sea monster?
+*/
+function removeBorder(tileContent) {
+  return tileContent
+    .slice(1, tileContent.length - 1)
+    .map( l => l.slice(1, l.length - 1) );
+}
+console.assert(removeBorder(['####','#ab#','#cd#','####']).join() === 'ab,cd');
+
+function transpose(tileContent) {
+  var result = [];
+  for (var i = 0; i < tileContent[0].length; i++) {
+    result.push(tileContent.map( l => l[i] ).join(''));
+  }
+  return result;
+}
+console.assert(transpose(['abc', 'def']).join() === 'ad,be,cf');
+
+function reverseCopy(arr) {
+  var result = [];
+  for (var e of arr) {
+    result.unshift(e);
+  }
+  return (typeof arr === "string") ? result.join('') : result;
+}
+console.assert(reverseCopy('abc') === 'cba');
+console.assert(reverseCopy([1,2,3]).join() === '3,2,1');
+
+function flipx(tileContent) {
+  return tileContent.map(reverseCopy);
+}
+console.assert(flipx(['abc','def']).join() === 'cba,fed');
+
+function flipy(tileContent) {
+  return reverseCopy(tileContent);
+}
+console.assert(flipy(['abc','def']).join() === 'def,abc');
+
+function everywhere(original) {
+  return [
+    original, // N
+    flipx(original), // -N
+    flipx(transpose(original)), // E
+    flipy(flipx(transpose(original))), // -E
+    flipy(original), // S
+    flipy(flipx(original)), // -S
+    transpose(original), // W
+    flipy(transpose(original)), // -W
+  ];
+}
+console.assert(everywhere(['ABC','def']).join(';') === "ABC,def;CBA,fed;dA,eB,fC;fC,eB,dA;def,ABC;fed,CBA;Ad,Be,Cf;Cf,Be,Ad");
+
+// target must be smaller than image, and x, y remain in-bounds
+function highlightTarget(target, image, x, y) {
+  // ensure we have an editable image, not immutable strings
+  var result = (typeof image[0] === "string") ? image.map(l => l.split('')) : image;
+  for (var j = 0; j < target.length; j++) {
+    for (var i = 0; i < target[j].length; i++) {
+      if (target[j][i] === '#') {
+        result[y+j][x+i] = 'O';
+      }
+    }
+  }
+  return result;
+}
+console.assert(highlightTarget([' # #','# # '], ['0123456789','abcdefghij','ABCDEFGHIJ'], 3, 1)
+            .map(l=>l.join('')).join('\n') ===  ['0123456789','abcdOfOhij','ABCOEOGHIJ'].join('\n'));
+
+function isImageMatch(target, image, x, y) {
+  for (var j = 0; j < target.length; j++) {
+    for (var i = 0; i < target[j].length; i++) {
+      if (target[j][i] === '#' &&
+          image[y+j][x+i] !== 'O' &&
+          image[y+j][x+i] !== '#') {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+console.assert( isImageMatch([' #','##'], ['ab#Oe','f#Oij'], 1, 0));
+console.assert(!isImageMatch([' #','##'], ['ab#Oe','f#Oij'], 2, 0));
+
+function highlightAll(target, image) {
+  // ensure we have an editable image, not immutable strings
+  var result = (typeof image[0] === "string") ? image.map(l => l.split('')) : image;
+  for (var t of everywhere(target)) {
+    for (var y=0; y <= image.length-t.length; y++) {
+      for (var x=0; x <= image[y].length-t[0].length; x++) {
+        if (isImageMatch(t, image, x, y)) {
+          highlightTarget(t, result, x, y);
+        }
+      }
+    }
+  }
+  return result;
+}
+function countWaves(image) {
+  return [...image.join('').match(/#/g)].length;
+}
+console.assert(countWaves(highlightAll(['###','#  '], [
+  '### ### ## ## #    #',
+  '#  #  # #   # #  # #',
+  ' ###    # # # ## ###'])) === 1);
+
+var monster = [
+'                  # ', 
+'#    ##    ##    ###',
+' #  #  #  #  #  #   ',
+];
+console.assert(countWaves(highlightAll(monster, [
+'.#.#..#.##...#.##..#####',
+'###....#.#....#..#......',
+'##.##.###.#.#..######...',
+'###.#####...#.#####.#..#',
+'##.#....#.##.####...#.##',
+'...########.#....#####.#',
+'....#..#...##..#.#.###..',
+'.####...#..#.....#......',
+'#..#.##..#..###.#.##....',
+'#.####..#.####.#.#.###..',
+'###.#.#...#.######.#..##',
+'#.####....##..########.#',
+'##..##.#...#...#.#.#.#..',
+'...#..#..#.#.##..###.###',
+'.#.#....#.##.#...###.##.',
+'###.#...#..#.##.######..',
+'.#.#.###.##.##.#..#.##..',
+'.####.###.#...###.#..#.#',
+'..#.#..#..#.#.#.####.###',
+'#..####...#.#.#.###.###.',
+'#####..#####...###....##',
+'#.##..#..#...#..####...#',
+'.#.###..##..##..####.##.',
+'...###...##...#...#..###',
+])) === 273);
+
+function getFirstCorner(tileEdgesMap, edgeTilesMap) {
+  return [...tileEdgesMap.keys()].find(k=>isCorner(k, tileEdgesMap, edgeTilesMap));
+}
+function getNeighbors(tileId, tileEdgesMap, edgeTilesMap) {
+  var neighborSets = tileEdgesMap.get(tileId).map(e => edgeTilesMap.get(e));
+  var result = [0,0,0,0]; // N,E,S,W
+  for (var i = 0; i < neighborSets.length; i++) {
+    for (var n of neighborSets[i]) {
+      if (n !== tileId) {
+        result[Math.floor(i/2)] = n;
+      }
+    }
+  }
+  return result;
+}
+function getNeighborsByContent(tileId, tileContent, edgeTilesMap) {
+  var result = [0,0,0,0]; // N,E,S,W
+  var edges = getEdges(tileContent);
+  var neighborSets = edges.map(e => edgeTilesMap.get(e));
+  for (var i = 0; i < neighborSets.length; i++) {
+    for (const n of neighborSets[i]) {
+      if (n !== tileId) {
+        result[i] = n;
+      }
+    }
+  }
+  return result;
+}
+  
