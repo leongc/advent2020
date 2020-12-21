@@ -91,6 +91,22 @@ function checkAllergenCandidates(allergen, ingredientAllergenMap, allergenCandid
   // console.log(ingredient + ' is ' + allergen); // by elimination
   knownAllergens.set(allergen, ingredient);
   knownIngredients.set(ingredient, allergen);
+
+  // remove this known ingredient from other allergen candidate sets
+  var deletedAllergens = new Set();
+  for (const [otherAllergen, candidates] of allergenCandidateMap.entries()) {
+    if (allergen === otherAllergen) { continue; }
+    if (candidates.delete(ingredient)) {
+      deletedAllergens.add(otherAllergen);
+    }
+  }
+  
+  // check if any allergens have been identified
+  for (const otherAllergen of deletedAllergens) {
+    checkAllergenCandidates(otherAllergen, ingredientAllergenMap, allergenCandidateMap, knownIngredients, knownAllergens);
+  }
+  
+  // update ingredient lists
   var deletedOtherIngredients = new Set();
   for (const [otherIngredient, allergens] of ingredientAllergenMap.entries()) {
     if (ingredient === otherIngredient) {
@@ -119,7 +135,7 @@ function intersection(setA, setB) {
     return _intersection
 }
 
-function getSafeIngredientUses(foods, allAllergens) {
+function computeAllergens(foods, allAllergens) {
   allAllergens ||= getAllAllergens(foods);
   var allIngredients = getAllIngredients(foods);
   var ingredientAllergenMap = makeIngredientAllergenMap(allIngredients, allAllergens);
@@ -168,12 +184,23 @@ function getSafeIngredientUses(foods, allAllergens) {
   var safeIngredients = new Set(Array.from(knownIngredients.entries())
     .filter(([k,v]) => v === 'SAFE')
     .map(([k,v]) => k));
-  return Array.from(
-    foods.flatMap( food => Array.from(food.ingredients) )
-         .filter( ingredient => safeIngredients.has(ingredient) )
-    ).length;
+  return {
+    getSafeIngredientUses: function() {
+      return Array.from(
+        foods.flatMap( food => Array.from(food.ingredients) )
+             .filter( ingredient => safeIngredients.has(ingredient) )
+        ).length;
+    },
+    getDangerousIngredients: function() {
+      return Array.from(knownAllergens.keys())
+        .sort() // sort alphabetically by allergen
+        .map(k => knownAllergens.get(k))
+        .join();
+    },
+  }
 }
-console.assert(getSafeIngredientUses(testFoods) === 5);
+var testCompute = computeAllergens(testFoods);
+console.assert(testCompute.getSafeIngredientUses() === 5);
 
 var day21input = [
 'cptr jjxp zzkq jtqt jmvzd mxgv mbgvjc rrqmh pvhcsn ltbj rvqjz sgtd gjnspc nnkfbt rzft nqv hhbn mxz dsntb ckdz mjbv mdgq dmjqb jxbnb rkhzrzq vqkcm bmgg ctmzb kmcj lgmtk dcplpl szhtvc nvxkrv qlqz bplgbt fkzqq nqncqb ntz jqnhd hfsmp czpfj kzlmds nb blsqq mrmjpg zgdr chpdjkf vvsjq dz xhnc zntsz kbmxb ntszq xdrkv xtxsd knlsxvd flrqnz bxns pzvkjv ssfnz lzzc (contains sesame)',
@@ -218,4 +245,22 @@ var day21input = [
 'sfjzfn mztlt hgjmbqj gkcnh lzzc gpsr cmhfx rvqjz tvfb htfb qfdjlq sfmqbl ntbr jqnhd nrfmm pjn dvpmjzv cmddh qjvzrv zntsz lgmfmp ltbj xmpdtf pjm cstcb xdrkv scrvrrbf jtqt vjbrstq jkqdv rrqmh mmszz nvxkrv szhtvc jxbnb pvprzd pkscpx tkmsp bxns jxlzhm ktb hktr pzvkjv xtxsd hsdc lfnl ckdfvz tgvrbl jjxp vbl gdpvd lgmz llpqf tptjhd lpdfbg jfj phnzt fdfzgq dktj zgdr scrqn vjtlvq jrjdg fksjj vclhj vnmkhgt zzkq drmhm mqxrzv ztpqkt fkzqq pvhcsn mmgdmql njbkq hjsjb mgcfqsm jkdv pmdqks mqh dzmkz cqpqbr mskp jzcv lnshn zvhcv glxk vxjt qtztn mdgq (contains shellfish, wheat)',
 'dmjqb scrqn kbfcck mgcfqsm xdrkv pzvkjv zzkq kbmxb hbxhrb zjfls tbhhf rzfcs zbhvl nrfmm cstcb tjbbb lfnl qvrqrj hsdc hgjmbqj gmlm sfjzfn skqzs mqh mnvvt jrjdg vvsjq dz chst pkscpx scrvrrbf xt ltbj sbvx lgmfmp pmdqks rvmqk xrd vnmkhgt ktb nphh vqkcm fkzqq rmvrtcrf fdfzgq ksk ckdz hlqq mskp vsqjf gjnspc cjv nxffgkd jzcv qtztn njbkq pjm mdgq ztpqkt vbl svppj fppzs pvhcsn qjvzrv czpfj tkmsp ntz tmrss hhbn zkhrz nnkfbt jxbnb sfmqbl rtlg chpdjkf ctmzb rrqmh kjcrdp bhtvt bplgbt ntbr pvprzd hfsmp zqrz kcktpbkr flrqnz jqnhd zvhcv (contains nuts, wheat)',
 ];
-console.log(getSafeIngredientUses(parseFoods(day21input)));
+var day21answers = computeAllergens(parseFoods(day21input));
+console.log(day21answers.getSafeIngredientUses());
+
+/*
+--- Part Two ---
+Now that you've isolated the inert ingredients, you should have enough information to figure out which ingredient contains which allergen.
+
+In the above example:
+
+mxmxvkd contains dairy.
+sqjhc contains fish.
+fvjkl contains soy.
+Arrange the ingredients alphabetically by their allergen and separate them by commas to produce your canonical dangerous ingredient list. (There should not be any spaces in your canonical dangerous ingredient list.) In the above example, this would be mxmxvkd,sqjhc,fvjkl.
+
+Time to stock your raft with supplies. What is your canonical dangerous ingredient list?
+*/
+console.assert(testCompute.getDangerousIngredients() === 'mxmxvkd,sqjhc,fvjkl');
+
+console.log(day21answers.getDangerousIngredients());
