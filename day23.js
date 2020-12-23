@@ -140,3 +140,126 @@ console.assert(testCrabCups.orderAfter(1) === '67384529');
 var crabCups = makeCrabCups('598162734');
 while (crabCups.moved < 100) { crabCups.move(); }
 console.log(crabCups.orderAfter(1));
+
+/*
+--- Part Two ---
+Due to what you can only assume is a mistranslation (you're not exactly fluent in Crab), you are quite surprised when the crab starts arranging many cups in a circle on your raft - one million (1000000) in total.
+
+Your labeling is still correct for the first few cups; after that, the remaining cups are just numbered in an increasing fashion starting from the number after the highest number in your list and proceeding one by one until one million is reached. (For example, if your labeling were 54321, the cups would be numbered 5, 4, 3, 2, 1, and then start counting up from 6 until one million is reached.) In this way, every number from one through one million is used exactly once.
+
+After discovering where you made the mistake in translating Crab Numbers, you realize the small crab isn't going to do merely 100 moves; the crab is going to do ten million (10000000) moves!
+
+The crab is going to hide your stars - one each - under the two cups that will end up immediately clockwise of cup 1. You can have them if you predict what the labels on those cups will be when the crab is finished.
+
+In the above example (389125467), this would be 934001 and then 159792; multiplying these together produces 149245887792.
+
+Determine which two cups will end up immediately clockwise of cup 1. What do you get if you multiply their labels together?
+*/
+function makeCup(label, prev) {
+  return {
+    label,
+    prev,
+    next: null,
+  };
+}
+function makeCrabCups2(input, cupCount = 1000000) {
+  // initialize doubly-linked cups sequentially 
+  var cups = [];
+  cups[0] = { next: null }; // throwaway placeholder for simplified looping
+  for (var i = 1; i <= cupCount; i++) {
+    var cup = makeCup(i, cups[i-1]);
+    cups[i] = cup;
+    cups[i-1].next = cup;
+  }
+  // initialize sequence starting with last cup
+  var firstCups = input.split('').map(c => parseInt(c, 10));
+  var lastCup = cups[cupCount];
+  for (var firstCupLabel of firstCups) {
+    var cup = cups[firstCupLabel];
+    lastCup.next = cup;
+    cup.prev = lastCup;
+    lastCup = cup;
+  }
+  // stitch end of initial sequence to remainder of normal sequence
+  lastCup.next = cups[firstCups.length+1];
+  cups[firstCups.length+1].prev = lastCup;
+  
+  return {
+    showDebug: false,
+    moved: 0,
+    safeDecrement: function(i) {
+      return (i > 1) ? (i - 1) : cupCount;
+    },
+    currentCup: cups[firstCups[0]],
+    move: function() {
+      this.moved++;
+      var current = this.currentCup.label;
+
+      // pick up next three cups
+      var pickupHead = this.currentCup.next;
+      var pickupBody = pickupHead.next;
+      var pickupTail = pickupBody.next;
+      var pickup = new Set();
+      pickup.add(pickupHead.label); 
+      pickup.add(pickupBody.label);
+      pickup.add(pickupTail.label);
+            
+      var destination = this.safeDecrement(current);
+      // skip destinations that have been picked up
+      while (pickup.has(destination)) {
+        destination = this.safeDecrement(destination);
+      }
+      
+      if (this.showDebug) {
+        console.log('-- move ' + this.moved + ' --');
+        console.log('('+this.currentCup.label+') ' + this.getNextLabels());
+        console.log('pick up:', Array.from(pickup));
+        console.log('destination:', destination);
+      }
+      
+      // connect currentCup to afterPickup
+      var afterPickup = pickupTail.next;
+      this.currentCup.next = afterPickup;
+      afterPickup.prev = this.currentCup;
+
+      // insert pickup after destination
+      var destinationCup = cups[destination];
+      var afterDestination = destinationCup.next;
+      destinationCup.next = pickupHead;
+      pickupHead.prev = destinationCup;
+      pickupTail.next = afterDestination;
+      afterDestination.prev = pickupTail;
+      
+      // advance currentCup
+      this.currentCup = this.currentCup.next;
+      
+      return this.currentCup.label;
+    }, // move()
+    moveTo: function(m=10000000) {
+      while (this.moved < m) {
+        this.move();
+      }
+      return this.currentCup.label;
+    }, // moveTo()
+    getNextLabels: function(cup = this.currentCup, n=9) {
+      var result = [];
+      for (var i = 0; i < n; i++) {
+        cup = cup.next;
+        result.push(cup.label);
+      }
+      return result;
+    }, // getLabels()
+    getNext2Product: function() {
+      var next2labels = this.getNextLabels(cups[1], 2);
+      return next2labels[0] * next2labels[1];
+    }, // getNext2Product()
+  }
+}
+var testCrabCups2 = makeCrabCups2('389125467', 10);
+console.assert(testCrabCups2.getNext2Product() === 2 * 5);
+console.log(testCrabCups2.move());
+console.log(testCrabCups2.currentCup.label, testCrabCups2.getNextLabels());
+
+var crabCups2 = makeCrabCups2('598162734');
+crabCups2.moveTo();
+console.log(crabCups2.getNext2Product());
