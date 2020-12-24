@@ -71,19 +71,19 @@ function getTile(path) {
     switch (step) {
       case 'w': x--; break;
       case 'e': x++; break;
-      case 'nw': y++; if (y%2 === 0) { x--; } break;
-      case 'ne': y++; if (y%2 !== 0) { x++; } break;
-      case 'sw': y--; if (y%2 === 0) { x--; } break;
-      case 'se': y--; if (y%2 !== 0) { x++; } break;
+      case 'nw': y++; if (y%2 !== 0) { x--; } break;
+      case 'ne': y++; if (y%2 === 0) { x++; } break;
+      case 'sw': y--; if (y%2 !== 0) { x--; } break;
+      case 'se': y--; if (y%2 === 0) { x++; } break;
       default: console.log('Unexpected step: ', step);
     }
   }
   return [x, y].join();
 }
-console.assert(getTile(parseLine('esew')) === [1, -1].join());
+console.assert(getTile(parseLine('esew')) === [0, -1].join());
 console.assert(getTile(parseLine('nwwswee')) === [0, 0].join());
 
-function countBlackTiles(input) {
+function getBlackTiles(input) {
   var blackTiles = new Set();
   for (const line of input) {
     var tile = getTile(parseLine(line));
@@ -93,9 +93,9 @@ function countBlackTiles(input) {
       blackTiles.add(tile);
     }
   }
-  return blackTiles.size;
+  return blackTiles;
 }
-console.assert(countBlackTiles(day24test) === 10);
+console.assert(getBlackTiles(day24test).size === 10);
 
 var day24input = [
 'seesweseseeeeeeeeeenweeee',
@@ -591,4 +591,133 @@ var day24input = [
 'swnweswnwnwsenwnenenwswnwswweeeswenw',
 'wnenenwneenwseswnwwswnwswwwswwnwne',
 ];
-console.log(countBlackTiles(day24input));
+console.log(getBlackTiles(day24input).size);
+
+/*
+--- Part Two ---
+The tile floor in the lobby is meant to be a living art exhibit. Every day, the tiles are all flipped according to the following rules:
+
+Any black tile with zero or more than 2 black tiles immediately adjacent to it is flipped to white.
+Any white tile with exactly 2 black tiles immediately adjacent to it is flipped to black.
+Here, tiles immediately adjacent means the six tiles directly touching the tile in question.
+
+The rules are applied simultaneously to every tile; put another way, it is first determined which tiles need to be flipped, then they are all flipped at the same time.
+
+In the above example, the number of black tiles that are facing up after the given number of days has passed is as follows:
+
+Day 1: 15
+Day 2: 12
+Day 3: 25
+Day 4: 14
+Day 5: 23
+Day 6: 28
+Day 7: 41
+Day 8: 37
+Day 9: 49
+Day 10: 37
+
+Day 20: 132
+Day 30: 259
+Day 40: 406
+Day 50: 566
+Day 60: 788
+Day 70: 1106
+Day 80: 1373
+Day 90: 1844
+Day 100: 2208
+After executing this process a total of 100 times, there would be 2208 black tiles facing up.
+
+How many tiles will be black after 100 days?
+*/
+function getNeighbors(tile) {
+  var [x, y] = tile.split(',').map(e => parseInt(e, 10));
+  return ((y%2 === 0) 
+            ? [[x-1, y], [x+1, y], [x, y-1], [x, y+1], [x-1, y-1], [x-1, y+1]]
+            : [[x-1, y], [x+1, y], [x, y-1], [x, y+1], [x+1, y-1], [x+1, y+1]]
+          ).map(xy => xy.join());
+}
+function printTiles(tiles) {
+  var xs = Array.from(tiles).map(t => parseInt(t, 10));
+  var ys = Array.from(tiles).map(t => parseInt(t.split(',')[1], 10));
+  // bounding box
+  var minX = Math.min(...xs);
+  var maxX = Math.max(...xs);
+  var minY = Math.min(...ys);
+  var maxY = Math.max(...ys);
+  
+  var width = (maxX - minX + 1) * 2 + 1; // (box + edge inclusive) * two chars per hex + odd row offset
+  var height = maxY - minY + 1; // box + edge inclusive
+ 
+  var rowTemplate = new Array(width);
+  rowTemplate.fill('.');
+  var grid = new Array();
+  for (var j = 0; j < height; j++) {
+    grid.push(rowTemplate.slice());
+  }
+  for (var tile of tiles) {
+    var [x, y] = tile.split(',', 2).map(e => parseInt(e, 10));
+    var i = (x - minX) * 2 + (y%2===0 ? 0 : 1); // 2 chars per hex + odd row offset
+    var j = y - minY;
+    grid[j][i] = '[';
+    grid[j][i+1] = ']';
+  }
+  console.log(String(minX).padStart(6) + String(maxX).padStart(width-4));
+  for (var j = grid.length; j-->0;) {
+    console.log(String(minY+j).padStart(4), grid[j].join(''));
+  }
+}
+function makeFloor(tiles) {
+  return {
+    today: tiles,
+    day: 0,
+    step: function() {
+      var todayArray = Array.from(this.today);
+      var tilesToCheck = new Set(todayArray.flatMap(tile => getNeighbors(tile))
+                                           .concat(todayArray));
+      var tomorrow = Array.from(tilesToCheck).filter(tile => {
+        var blackNeighbors = this.countBlackNeighbors(tile);
+        // console.log(tile, blackNeighbors, this.isBlack(tile));
+        return blackNeighbors === 2 ||
+              (blackNeighbors === 1 && this.isBlack(tile));
+      });
+      this.today = new Set(tomorrow);
+      this.day++;
+      return this.today.size;
+    },
+    stepTo: function(targetDay) {
+      var result;
+      while (this.day < targetDay) {
+        result = this.step();
+      }
+      return result;
+    },
+    countBlackNeighbors: function(tile) {
+      return getNeighbors(tile).filter(t => this.isBlack(t)).length;
+    },
+    isBlack: function(tile) {
+      return this.today.has(tile);
+    },
+  };
+}
+var testFloor = makeFloor(getBlackTiles(day24test));
+console.assert(testFloor.step() === 15);
+console.assert(testFloor.stepTo(2) === 12);
+console.assert(testFloor.stepTo(3) === 25);
+console.assert(testFloor.stepTo(4) === 14);
+console.assert(testFloor.stepTo(5) === 23);
+console.assert(testFloor.stepTo(6) === 28);
+console.assert(testFloor.stepTo(7) === 41);
+console.assert(testFloor.stepTo(8) === 37);
+console.assert(testFloor.stepTo(9) === 49);
+console.assert(testFloor.stepTo(10) === 37);
+console.assert(testFloor.stepTo(20) === 132);
+console.assert(testFloor.stepTo(30) === 259);
+console.assert(testFloor.stepTo(40) === 406);
+console.assert(testFloor.stepTo(50) === 566);
+console.assert(testFloor.stepTo(60) === 788);
+console.assert(testFloor.stepTo(70) === 1106);
+console.assert(testFloor.stepTo(80) === 1373);
+console.assert(testFloor.stepTo(90) === 1844);
+console.assert(testFloor.stepTo(100) === 2208);
+
+console.log(makeFloor(getBlackTiles(day24input)).stepTo(100));
