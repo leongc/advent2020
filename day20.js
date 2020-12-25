@@ -165,15 +165,6 @@ To check that you've assembled the image correctly, multiply the IDs of the four
 
 Assemble the tiles into an image. What do you get if you multiply together the IDs of the four corner tiles?
 */
-function reverse(edge) {
-  var egde = "";
-  for (var i = edge.length-1; i >= 0; i--) {
-    egde += edge[i];
-  }
-  return egde;
-}
-console.assert(reverse('edge') === 'egde');
-
 function getEdges(tileContent) {
   var edges = [];
   var n = tileContent[0];
@@ -210,12 +201,12 @@ function makeTileEdgesMap(tileContentMap) {
   var tileEdgesMap = new Map(); // id -> [ edge strings N, -N, E, -E, S, -S, W, -W ]
   for (var [tileId, content] of tileContentMap.entries()) {
     var edges = getEdges(content);
-    tileEdgesMap.set(tileId, edges.concat(edges.map(reverse)));
+    tileEdgesMap.set(tileId, edges.concat(edges.map(e => e.reverse())));
   }
   return tileEdgesMap;
 }
-
-var testTileEdges = makeTileEdgesMap(parseTiles(day20test));
+var testTileContent = parseTiles(day20test);
+var testTileEdges = makeTileEdgesMap(testTileContent);
 console.assert(testTileEdges.size === 9);
 
 function countEdges(tileEdgesMap) {
@@ -2107,11 +2098,10 @@ function transpose(tileContent) {
 console.assert(transpose(['abc', 'def']).join() === 'ad,be,cf');
 
 function reverseCopy(arr) {
-  var result = [];
-  for (var e of arr) {
-    result.unshift(e);
+  if (typeof arr === "string") {
+    return arr.split('').reverse().join('');
   }
-  return (typeof arr === "string") ? result.join('') : result;
+  return arr.slice().reverse();
 }
 console.assert(reverseCopy('abc') === 'cba');
 console.assert(reverseCopy([1,2,3]).join() === '3,2,1');
@@ -2253,4 +2243,80 @@ function getNeighborsByContent(tileId, tileContent, edgeTilesMap) {
   }
   return result;
 }
-  
+
+function makeIdGrid(tileEdges, edgeTiles, tileContent) {
+  var idGrid = [];
+  var prevIdRow;
+  var idRow = [getFirstCorner(tileEdges, edgeTiles)];
+  while (idRow[0] !== 0) {
+    var westTarget = 0;
+    var x = 0;
+    var northTarget = prevIdRow ? prevIdRow[x] : 0;
+    var targetId = idRow[x];
+    var nextIdRow = [];
+    while (true) {
+      var targetTile = tileContent.get(targetId);
+      if (targetTile === undefined) { console.log('Unable to find ' + targetId); }
+      var reorientedTile = everywhere(targetTile).find(c => { 
+                          var neighbors = getNeighborsByContent(targetId, c, edgeTiles);
+                          return neighbors[0] === northTarget && neighbors[3] === westTarget;
+                        });
+      if (reorientedTile === undefined) { console.log('Unable to orient ' + targetId + ' for neighbors n=' + northTarget + ', w=' + westTarget ); } else
+      tileContent.set(targetId, reorientedTile);
+      var neighbors = getNeighborsByContent(targetId, reorientedTile, edgeTiles);
+      // fill in next row with south neighbor
+      nextIdRow.push(neighbors[2]);
+
+      // normally continue east
+      westTarget = targetId;
+      targetId = neighbors[1];
+      if (targetId === 0) { 
+        // no eastern neighbor indicates the end of the row
+        break;
+      }
+
+      if (prevIdRow === undefined) {
+        // build first row
+        idRow.push(targetId);
+      } else {
+        // match previous row
+        northTarget = prevIdRow[++x];
+        // double-check previous prediction
+        if (targetId !== idRow[x]) { 
+          console.log('Unexpected neighbor! South predicted ' + idRow[x] + ', but East produced ' + targetId);
+        }
+      }
+    } // wend this row
+    idGrid.push(idRow);
+    prevIdRow = idRow;
+    idRow = nextIdRow;
+  } // wend last grid row
+  return idGrid;
+} // makeIdGrid
+var testIdGrid = makeIdGrid(testTileEdges, testEdgeTiles, testTileContent);
+
+function joinGrid(idGrid, tileContent) {
+  var result = [];
+  for (const gridRow of idGrid) {
+    var rowContents = gridRow.map(id => removeBorder(tileContent.get(id)));
+    for (var i = 0; i < rowContents[0].length; i++) {
+      var line = "";
+      for (const row of rowContents) {
+        line += row[i];
+      }
+      result.push(line);
+    }
+  }
+  return result;
+}
+
+function part2(input) {
+  var tileContent = parseTiles(input);
+  var tileEdges = makeTileEdgesMap(tileContent);
+  var edgeTiles = countEdges(tileEdges);
+  var idGrid = makeIdGrid(tileEdges, edgeTiles, tileContent);
+  return countWaves(highlightAll(monster, joinGrid(idGrid, tileContent)));
+}
+
+console.assert(part2(day20test) === 273);
+console.log(part2(day20input));
