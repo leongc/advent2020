@@ -197,11 +197,20 @@ function parseTiles(input) {
   return tileContentMap;
 }
 
+function reverseCopy(arr) {
+  if (typeof arr === "string") {
+    return arr.split('').reverse().join('');
+  }
+  return arr.slice().reverse();
+}
+console.assert(reverseCopy('abc') === 'cba');
+console.assert(reverseCopy([1,2,3]).join() === '3,2,1');
+
 function makeTileEdgesMap(tileContentMap) {
   var tileEdgesMap = new Map(); // id -> [ edge strings N, -N, E, -E, S, -S, W, -W ]
   for (var [tileId, content] of tileContentMap.entries()) {
     var edges = getEdges(content);
-    tileEdgesMap.set(tileId, edges.concat(edges.map(e => e.reverse())));
+    tileEdgesMap.set(tileId, edges.concat(edges.map(e => reverseCopy(e))));
   }
   return tileEdgesMap;
 }
@@ -2096,15 +2105,6 @@ function transpose(tileContent) {
   return result;
 }
 console.assert(transpose(['abc', 'def']).join() === 'ad,be,cf');
-
-function reverseCopy(arr) {
-  if (typeof arr === "string") {
-    return arr.split('').reverse().join('');
-  }
-  return arr.slice().reverse();
-}
-console.assert(reverseCopy('abc') === 'cba');
-console.assert(reverseCopy([1,2,3]).join() === '3,2,1');
 
 function flipx(tileContent) {
   return tileContent.map(reverseCopy);
